@@ -10,21 +10,102 @@
       <input id="file" type="file"/>
     </div>
     <div>
-      <button id="submit">Submit</button>
+      <h4>Documents</h4>
+      <ul>
+        {% for document in documents %}
+          <li>
+            <a target="_blank" href="{{ document.attachment.url }}">Document {{ document.id }}</a>
+            <span class="delete-document" data-document-id="{{ document.id }}" style="color: red; cursor: pointer;">
+              (delete)
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
     </div>
 	</body>
 	<script src="https://code.jquery.com/jquery-3.4.1.min.js"
           integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
-          crossorigin="anonymous"></script>
+          crossorigin="anonymous">
+  </script>
 	<script>
 		$(document).ready(function () {
-		  $('#submit').click(function () {
+		  function generatePresignedS3Url(file) {
+		    $.ajax({
+          method: 'GET',
+          url: `{% url 's3_upload:generate_presigned_s3_url' %}`,
+          async: false,
+          data: {
+            'name': file.name,
+            'type': file.type
+          },
+          success: function (response) {
+            var formData = new FormData();
+
+            for (var key in response.fields) {
+              formData.append(key, response.fields[key]);
+            }
+
+            formData.append('file', file);
+            uploadToS3(response.url, formData);
+          }
+        });
+      }
+
+      function uploadToS3(awsUrl, formData) {
+		    $.ajax({
+          method: 'POST',
+          url: awsUrl,
+          data: formData,
+          processData: false,
+          contentType: false,
+          success: function () {
+            createDocumentInDatabase(formData.get('file'));
+          }
+        });
+      }
+
+      function createDocumentInDatabase(file) {
+		    $.ajax({
+          method: 'POST',
+          url: `{% url 's3_upload:document-list' %}`,
+          async: false,
+          dataType: 'json',
+          contentType: 'application/json',
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          data: JSON.stringify({'attachment': file.name}),
+          success: function () {
+            alert('Document created successfully');
+            location.reload();
+          }
+        });
+      }
+
+      function deleteDocument(documentId) {
+		    var url = "{% url 's3_upload:document-detail' pk='document_pk' %}";
+        url = url.replace(/document_pk/, documentId);
+
+		    $.ajax({
+          url: url,
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          success: function () {
+            location.reload();
+          }
+        });
+      }
+
+		  $('#file').change(function () {
 		    var file = $('#file').prop('files')[0];
-		    // presign file
-        // POST to S3
-        // show progress bar
-        // create entry in database
-        // finish
+		    generatePresignedS3Url(file);
+      });
+
+		  $('.delete-document').click(function () {
+		    var documentId = $(this).data('document-id');
+		    deleteDocument(documentId);
       });
 		});
 	</script>

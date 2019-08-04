@@ -19,6 +19,12 @@ from .serializers import DocumentSerializer
 class Home(TemplateView):
     template_name = 'home.html'
 
+    def get_context_data(self, **kwargs):
+        context = super(Home, self).get_context_data(**kwargs)
+        context['documents'] = Document.objects.all()
+
+        return context
+
 
 class GeneratePresignedS3Url(View):
     def get(self, request):
