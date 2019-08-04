@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Home</title>
+	</head>
+	<body>
+		<h3>S3 Upload</h3>
+		<div>
+      <input id="file" type="file"/>
+    </div>
+    <div>
+      <button id="submit">Submit</button>
+    </div>
+	</body>
+	<script src="https://code.jquery.com/jquery-3.4.1.min.js"
+          integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+          crossorigin="anonymous"></script>
+	<script>
+		$(document).ready(function () {
+		  $('#submit').click(function () {
+		    var file = $('#file').prop('files')[0];
+		    // presign file
+        // POST to S3
+        // show progress bar
+        // create entry in database
+        // finish
+      });
+		});
+	</script>
+</html>
