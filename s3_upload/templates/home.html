@@ -2,29 +2,74 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<title>Home</title>
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+          crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://use.fontawesome.com/releases/v5.10.1/css/all.css"
+          integrity="sha384-wxqG4glGB3nlqX0bi23nmgwCSjWIW13BdLUEYC4VIMehfbcro/ATkyDsF/AbIOVe"
+          crossorigin="anonymous">
 	</head>
 	<body>
-		<h3>S3 Upload</h3>
-		<div>
-      <input id="file" type="file"/>
-    </div>
-    <div>
-      <h4>Documents</h4>
-      <ul>
-        {% for document in documents %}
-          <li>
-            <a target="_blank" href="{{ document.attachment.url }}">Document {{ document.id }}</a>
-            <span class="delete-document" data-document-id="{{ document.id }}" style="color: red; cursor: pointer;">
-              (delete)
-            </span>
-          </li>
-        {% endfor %}
-      </ul>
+    <div class="container">
+      <div class="row mt-3">
+        <div class="col">
+          <h3>S3 Upload</h3>
+        </div>
+      </div>
+      <div class="row mt-1">
+        <div class="col">
+          <input id="file" type="file"/>
+          <div id="progress" class="progress d-none mt-3">
+            <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row mt-5">
+        <div class="col">
+          <h4>Documents</h4>
+          <ul class="list-group list-group-flush">
+            {% for document in documents %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <a target="_blank" href="{{ document.attachment.url }}">Document {{ document.pk }}</a>
+                <span data-toggle="modal" data-target="#delete-document-modal-{{ document.pk }}" style="color: red; cursor: pointer;">
+                  <i class="fas fa-minus-circle"></i>
+                </span>
+              </li>
+              <div id="delete-document-modal-{{ document.pk }}" class="modal" tabindex="-1" role="dialog">
+                <div class="modal-dialog" role="document">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Delete document</h5>
+                      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                      </button>
+                    </div>
+                    <div class="modal-body">
+                      <p>Are you sure?</p>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+                      <button type="button" class="btn btn-primary delete-document" data-document-id="{{ document.pk }}">Yes</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
     </div>
 	</body>
 	<script src="https://code.jquery.com/jquery-3.4.1.min.js"
           integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+          crossorigin="anonymous">
+  </script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+          integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
           crossorigin="anonymous">
   </script>
 	<script>
@@ -33,7 +78,6 @@
 		    $.ajax({
           method: 'GET',
           url: `{% url 's3_upload:generate_presigned_s3_url' %}`,
-          async: false,
           data: {
             'name': file.name,
             'type': file.type
@@ -51,13 +95,32 @@
         });
       }
 
+      function toggleProgressBar() {
+		    $('#progress').toggleClass('d-none');
+      }
+
       function uploadToS3(awsUrl, formData) {
+		    var progressBar = $('#progress-bar');
+
 		    $.ajax({
           method: 'POST',
           url: awsUrl,
           data: formData,
           processData: false,
           contentType: false,
+          beforeSend: toggleProgressBar,
+          complete: toggleProgressBar,
+          xhr: function () {
+            var xhr = new window.XMLHttpRequest();
+            xhr.upload.addEventListener('progress', function (event) {
+              if (event.lengthComputable) {
+                var percentComplete = Math.round((event.loaded / event.total) * 100);
+                progressBar.css('width', percentComplete + '%');
+                progressBar.text(percentComplete + '%');
+              }
+            }, false);
+            return xhr;
+          },
           success: function () {
             createDocumentInDatabase(formData.get('file'));
           }
@@ -68,7 +131,6 @@
 		    $.ajax({
           method: 'POST',
           url: `{% url 's3_upload:document-list' %}`,
-          async: false,
           dataType: 'json',
           contentType: 'application/json',
           headers: {
