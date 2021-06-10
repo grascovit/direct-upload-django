@@ -2,7 +2,7 @@ backports.functools-lru-cache==1.5
 boto3==1.9.200
 botocore==1.12.200
 configparser==3.7.4
-Django==1.11.23
+Django==2.2.24
 django-extensions==2.2.1
 django-storages==1.7.1
 djangorestframework==3.9.4
